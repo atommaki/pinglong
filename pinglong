@@ -23,8 +23,8 @@ def one_packet_ping(sleep,IP,pingresults):
   except KeyboardInterrupt:
     return
 
-def print_header():
-  print 'Time     x=lost   .=OK      loss(%)    min [ms]    avg [ms]    max [ms]'
+def print_header(pingprobes):
+  print 'Time     x=lost   .=OK  '+' '.ljust(pingprobes-20)+'    loss(%)    min [ms]    avg [ms]    max [ms]'
 
 def one_minute_pings(pingprobes,IP):
   try:
@@ -80,12 +80,12 @@ def main():
 
     print 'PING '+host+' ('+IP+')'
 
-    pingprobes=20
+    pingprobes=30
     lastheaderprinthour='X'
     while True:
       current=time.strftime('%H%M')
       if current[:2] != lastheaderprinthour:
-        print_header()
+        print_header(pingprobes)
         lastheaderprinthour=current[:2]
       previous=current
       one_minute_pings(pingprobes,IP)
