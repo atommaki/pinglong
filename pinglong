@@ -7,94 +7,94 @@ import socket
 from multiprocessing import Process, Queue
 
 def one_packet_ping(sleep,IP,pingresults):
-  import time
-  try:
-    time.sleep(sleep)
-    Ping=subprocess.Popen(["ping", "-c", "1", "-n", IP],stdout=subprocess.PIPE)
-    Ping.wait()
-    time=0
-    if Ping.returncode==0:
-      while Ping.stdout.readline():
-        one_line_output = str(Ping.stdout.readline())
-      start=one_line_output.find('=')+1
-      end=start+one_line_output[start:].find('/')
-      time=float(one_line_output[start:end])
-    pingresults.put([Ping.returncode,time])
-  except KeyboardInterrupt:
-    return
+    import time
+    try:
+        time.sleep(sleep)
+        Ping=subprocess.Popen(["ping", "-c", "1", "-n", IP],stdout=subprocess.PIPE)
+        Ping.wait()
+        time=0
+        if Ping.returncode==0:
+            while Ping.stdout.readline():
+                one_line_output = str(Ping.stdout.readline())
+            start=one_line_output.find('=')+1
+            end=start+one_line_output[start:].find('/')
+            time=float(one_line_output[start:end])
+        pingresults.put([Ping.returncode,time])
+    except KeyboardInterrupt:
+        return
 
 def print_header(pingprobes):
-  print('Time     x=lost   .=OK  '+' '.ljust(pingprobes-20)+'    loss(%)    min [ms]    avg [ms]    max [ms]')
+    print('Time         x=lost   .=OK  '+' '.ljust(pingprobes-20)+'      loss(%)        min [ms]        avg [ms]        max [ms]')
 
 def one_minute_pings(pingprobes,IP):
-  try:
-    printed=0
-    pingok=0
-    packet_loss=0
-    min_time=1000000.0
-    max_time=0.0
-    all_time=0
-    pingresults=Queue()
+    try:
+        printed=0
+        pingok=0
+        packet_loss=0
+        min_time=1000000.0
+        max_time=0.0
+        all_time=0
+        pingresults=Queue()
 
-    current=time.strftime('%H%M')
-    print(time.strftime('%H:%M')+': ', end='')
-    sec=int(time.strftime('%S'))
-    for i in range(0,pingprobes):
-      x=Process(target=one_packet_ping, args=(i*(60-sec)/(pingprobes+1),IP,pingresults,))
-      x.start()
-    while printed < pingprobes:
-      if pingresults.qsize()>0:
-        pingresult=pingresults.get()
-        if pingresult[0]==0:
-          pingok=pingok+1
-          pingtime=pingresult[1]
-          sys.stdout.write('.')
-          if pingtime < min_time: min_time=pingtime
-          if pingtime > max_time: max_time=pingtime
-          all_time=all_time+pingtime
-        else:
-          packet_loss=packet_loss+1
-          sys.stdout.write('x')
-        printed=printed+1
-        sys.stdout.flush()
-      time.sleep(1)
-  finally:
-    if printed > 0:
-      space_needed=pingprobes-printed
-      print('  '.ljust(space_needed), end='')
-      packet_loss=(100*packet_loss)/printed
-      print(str(packet_loss).rjust(3)+'%', end='')
-      if packet_loss != 100:
-        print(' '.ljust(6)+str(min_time)[:6].ljust(6)+' '.ljust(6)+str(all_time/pingok)[:6].ljust(6)+' '.ljust(6)+str(max_time)[:6].ljust(6))
-      else:
-        print('')
+        current=time.strftime('%H%M')
+        print(time.strftime('%H:%M')+': ', end='')
+        sec=int(time.strftime('%S'))
+        for i in range(0,pingprobes):
+            x=Process(target=one_packet_ping, args=(i*(60-sec)/(pingprobes+1),IP,pingresults,))
+            x.start()
+        while printed < pingprobes:
+            if pingresults.qsize()>0:
+                pingresult=pingresults.get()
+                if pingresult[0]==0:
+                    pingok=pingok+1
+                    pingtime=pingresult[1]
+                    sys.stdout.write('.')
+                    if pingtime < min_time: min_time=pingtime
+                    if pingtime > max_time: max_time=pingtime
+                    all_time=all_time+pingtime
+                else:
+                    packet_loss=packet_loss+1
+                    sys.stdout.write('x')
+                printed=printed+1
+                sys.stdout.flush()
+            time.sleep(1)
+    finally:
+        if printed > 0:
+            space_needed=pingprobes-printed
+            print('  '.ljust(space_needed), end='')
+            packet_loss=(100*packet_loss)/printed
+            print(str(packet_loss).rjust(3)+'%', end='')
+            if packet_loss != 100:
+                print(' '.ljust(6)+str(min_time)[:6].ljust(6)+' '.ljust(6)+str(all_time/pingok)[:6].ljust(6)+' '.ljust(6)+str(max_time)[:6].ljust(6))
+            else:
+                print('')
 
 def main():
-  try:
-    host=sys.argv[1]
     try:
-      IP=socket.gethostbyname(host)
-    except socket.gaierror as e:
-      print(e[1])
-      sys.exit(1)
+        host=sys.argv[1]
+        try:
+            IP=socket.gethostbyname(host)
+        except socket.gaierror as e:
+            print(e[1])
+            sys.exit(1)
 
-    print('PING '+host+' ('+IP+')')
+        print('PING '+host+' ('+IP+')')
 
-    pingprobes=30
-    lastheaderprinthour='X'
-    while True:
-      current=time.strftime('%H%M')
-      if current[:2] != lastheaderprinthour:
-        print_header(pingprobes)
-        lastheaderprinthour=current[:2]
-      previous=current
-      one_minute_pings(pingprobes,IP)
-      while current == previous:
-        current=time.strftime('%H%M')
-        time.sleep(1)
-  except KeyboardInterrupt:
-    print('')
-    sys.exit(0)
+        pingprobes=30
+        lastheaderprinthour='X'
+        while True:
+            current=time.strftime('%H%M')
+            if current[:2] != lastheaderprinthour:
+                print_header(pingprobes)
+                lastheaderprinthour=current[:2]
+            previous=current
+            one_minute_pings(pingprobes,IP)
+            while current == previous:
+                current=time.strftime('%H%M')
+                time.sleep(1)
+    except KeyboardInterrupt:
+        print('')
+        sys.exit(0)
 
 
 main()
