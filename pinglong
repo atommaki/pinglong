@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import sys
 import subprocess
@@ -15,7 +15,7 @@ def one_packet_ping(sleep,IP,pingresults):
     time=0
     if Ping.returncode==0:
       while Ping.stdout.readline():
-        one_line_output = Ping.stdout.readline()
+        one_line_output = str(Ping.stdout.readline())
       start=one_line_output.find('=')+1
       end=start+one_line_output[start:].find('/')
       time=float(one_line_output[start:end])
@@ -24,7 +24,7 @@ def one_packet_ping(sleep,IP,pingresults):
     return
 
 def print_header(pingprobes):
-  print 'Time     x=lost   .=OK  '+' '.ljust(pingprobes-20)+'    loss(%)    min [ms]    avg [ms]    max [ms]'
+  print('Time     x=lost   .=OK  '+' '.ljust(pingprobes-20)+'    loss(%)    min [ms]    avg [ms]    max [ms]')
 
 def one_minute_pings(pingprobes,IP):
   try:
@@ -37,7 +37,7 @@ def one_minute_pings(pingprobes,IP):
     pingresults=Queue()
 
     current=time.strftime('%H%M')
-    print time.strftime('%H:%M')+': ',
+    print(time.strftime('%H:%M')+': ', end='')
     sec=int(time.strftime('%S'))
     for i in range(0,pingprobes):
       x=Process(target=one_packet_ping, args=(i*(60-sec)/(pingprobes+1),IP,pingresults,))
@@ -61,13 +61,13 @@ def one_minute_pings(pingprobes,IP):
   finally:
     if printed > 0:
       space_needed=pingprobes-printed
-      print '  '.ljust(space_needed),
+      print('  '.ljust(space_needed), end='')
       packet_loss=(100*packet_loss)/printed
-      print (str(packet_loss).rjust(3)+'%'),
+      print(str(packet_loss).rjust(3)+'%', end='')
       if packet_loss != 100:
-        print ' '.ljust(6)+str(min_time)[:6].ljust(6)+' '.ljust(6)+str(all_time/pingok)[:6].ljust(6)+' '.ljust(6)+str(max_time)[:6].ljust(6)
+        print(' '.ljust(6)+str(min_time)[:6].ljust(6)+' '.ljust(6)+str(all_time/pingok)[:6].ljust(6)+' '.ljust(6)+str(max_time)[:6].ljust(6))
       else:
-        print
+        print('')
 
 def main():
   try:
@@ -75,10 +75,10 @@ def main():
     try:
       IP=socket.gethostbyname(host)
     except socket.gaierror as e:
-      print e[1]
+      print(e[1])
       sys.exit(1)
 
-    print 'PING '+host+' ('+IP+')'
+    print('PING '+host+' ('+IP+')')
 
     pingprobes=30
     lastheaderprinthour='X'
@@ -93,7 +93,7 @@ def main():
         current=time.strftime('%H%M')
         time.sleep(1)
   except KeyboardInterrupt:
-    print
+    print('')
     sys.exit(0)
 
 
