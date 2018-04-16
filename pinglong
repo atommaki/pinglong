@@ -103,7 +103,10 @@ def main():
         IP_family=addrinfo[0]
         IP=addrinfo[4][0]
 
-        print('PING '+args.host+' ('+IP+')')
+        if args.host == IP:
+            print('PING '+args.host)
+        else:
+            print('PING '+args.host+' ('+IP+')')
 
         pingprobes=30
         lastheaderprinthour='X'
