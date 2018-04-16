@@ -2,9 +2,9 @@
 
 pinglong is the useful ping for long run pings.
 
-It's written in python2 and uses the standard ping command, but gives you a nicer output, especially when you run ping for long.
+It's written in python3 and uses the standard ping or ping6 command, but gives you a nicer output, especially when you run ping for long.
 
-It's tested only on Linux.
+It's currenly tested only on Linux.
 
 ## example outpout
 
