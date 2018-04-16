@@ -4,13 +4,18 @@ import sys
 import subprocess
 import time
 import socket
+import argparse
 from multiprocessing import Process, Queue
 
-def one_packet_ping(sleep,IP,pingresults):
-    import time
+def one_packet_ping(sleep, IP, IP_family, pingresults):
+    if IP_family == socket.AF_INET6:
+        pingcmd='ping6' # IPv6
+    else:
+        pingcmd='ping'  # IPv4
     try:
+        import time
         time.sleep(sleep)
-        Ping=subprocess.Popen(["ping", "-c", "1", "-n", IP],stdout=subprocess.PIPE)
+        Ping=subprocess.Popen([pingcmd, "-c", "1", "-n", IP],stdout=subprocess.PIPE)
         Ping.wait()
         time=0
         if Ping.returncode==0:
@@ -26,7 +31,7 @@ def one_packet_ping(sleep,IP,pingresults):
 def print_header(pingprobes):
     print('Time         x=lost   .=OK  '+' '.ljust(pingprobes-20)+'      loss(%)        min [ms]        avg [ms]        max [ms]')
 
-def one_minute_pings(pingprobes,IP):
+def one_minute_pings(pingprobes, IP, IP_family):
     try:
         printed=0
         pingok=0
@@ -40,7 +45,7 @@ def one_minute_pings(pingprobes,IP):
         print(time.strftime('%H:%M')+': ', end='')
         sec=int(time.strftime('%S'))
         for i in range(0,pingprobes):
-            x=Process(target=one_packet_ping, args=(i*(60-sec)/(pingprobes+1),IP,pingresults,))
+            x=Process(target=one_packet_ping, args=(i*(60-sec)/(pingprobes+1), IP, IP_family, pingresults,))
             x.start()
         while printed < pingprobes:
             if pingresults.qsize()>0:
@@ -70,15 +75,35 @@ def one_minute_pings(pingprobes,IP):
                 print('')
 
 def main():
+    ### Arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('host', action='store')
+    ipv4_or_ipv6 = parser.add_mutually_exclusive_group()
+    ipv4_or_ipv6.add_argument('-4', help='force IPv4', action='store_true')
+    ipv4_or_ipv6.add_argument('-6', help='force IPv6', action='store_true')
+    args = parser.parse_args()
+
+    address_family = None
+    if vars(args)['4']:
+        address_family = socket.AF_INET
+    if vars(args)['6']:
+        address_family = socket.AF_INET6
+    ### /Arguments
+
     try:
-        host=sys.argv[1]
         try:
-            IP=socket.gethostbyname(host)
+            if address_family:
+                addrinfo=socket.getaddrinfo(args.host, 0, family = address_family)[0]
+            else:
+                addrinfo=socket.getaddrinfo(args.host, 0)[0]
         except socket.gaierror as e:
             print(e[1])
             sys.exit(1)
 
-        print('PING '+host+' ('+IP+')')
+        IP_family=addrinfo[0]
+        IP=addrinfo[4][0]
+
+        print('PING '+args.host+' ('+IP+')')
 
         pingprobes=30
         lastheaderprinthour='X'
@@ -88,7 +113,7 @@ def main():
                 print_header(pingprobes)
                 lastheaderprinthour=current[:2]
             previous=current
-            one_minute_pings(pingprobes,IP)
+            one_minute_pings(pingprobes, IP, IP_family)
             while current == previous:
                 current=time.strftime('%H%M')
                 time.sleep(1)
