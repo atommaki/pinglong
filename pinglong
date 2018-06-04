@@ -15,15 +15,17 @@ def one_packet_ping(sleep, IP, IP_family, pingresults):
     try:
         import time
         time.sleep(sleep)
-        Ping=subprocess.Popen([pingcmd, "-c", "1", "-n", IP],stdout=subprocess.PIPE)
+        Ping=subprocess.Popen([ pingcmd, "-c", "1", "-n", IP ],
+                              stdout = subprocess.PIPE,
+                              stderr = subprocess.PIPE)
+        pingstdout, pingstderr = Ping.communicate()
         Ping.wait()
         time=0
         if Ping.returncode==0:
-            while Ping.stdout.readline():
-                one_line_output = str(Ping.stdout.readline())
-            start=one_line_output.find('=')+1
-            end=start+one_line_output[start:].find('/')
-            time=float(one_line_output[start:end])
+            ping_stdout_lastline = str(pingstdout).split('\\n')[-2]
+            start=ping_stdout_lastline.find('=')+1
+            end=start+ping_stdout_lastline[start:].find('/')
+            time=float(ping_stdout_lastline[start:end])
         pingresults.put([Ping.returncode,time])
     except KeyboardInterrupt:
         return
@@ -67,7 +69,7 @@ def one_minute_pings(pingprobes, IP, IP_family):
         if printed > 0:
             space_needed=pingprobes-printed
             print('  '.ljust(space_needed), end='')
-            packet_loss=(100*packet_loss)/printed
+            packet_loss=round((100*packet_loss)/printed, 1)
             print(str(packet_loss).rjust(3)+'%', end='')
             if packet_loss != 100:
                 print(' '.ljust(6)+str(min_time)[:6].ljust(6)+' '.ljust(6)+str(all_time/pingok)[:6].ljust(6)+' '.ljust(6)+str(max_time)[:6].ljust(6))
