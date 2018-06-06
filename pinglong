@@ -88,6 +88,10 @@ def main():
     ### Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('host', action='store')
+    ppm_min = 10
+    ppm_max = 30
+    ppm_default = 30
+    parser.add_argument('--ppm', help='pings per minute (default={}, min={}, max={})'.format(ppm_default, ppm_min, ppm_max), default=ppm_default, type=int)
     ipv4_or_ipv6 = parser.add_mutually_exclusive_group()
     ipv4_or_ipv6.add_argument('-4', help='force IPv4', action='store_true')
     ipv4_or_ipv6.add_argument('-6', help='force IPv6', action='store_true')
@@ -98,6 +102,7 @@ def main():
         address_family = socket.AF_INET
     if vars(args)['6']:
         address_family = socket.AF_INET6
+    pingprobes = args.ppm
     ### /Arguments
 
     try:
@@ -118,7 +123,6 @@ def main():
         else:
             print('PING '+args.host+' ('+IP+')')
 
-        pingprobes = 30
         lastheaderprinthour = 'X'
         pingn = 0
         packet_loss = 0
