@@ -32,7 +32,7 @@ def one_packet_ping(sleep, IP, IP_family, pingresults):
         return
 
 def print_header(pingprobes):
-    print('Time         x=lost   .=OK  '+' '.ljust(pingprobes-20)+'      loss(%)        min [ms]        avg [ms]        max [ms]')
+    print('Time         x=lost   .=OK  '+' '.ljust(pingprobes-20)+'loss(%)   min [ms]    avg [ms]    max [ms]')
 
 def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, all_downtime):
     def print_stat(pingprobes, printed, pingok, packet_loss):
@@ -118,8 +118,8 @@ def main():
         else:
             print('PING '+args.host+' ('+IP+')')
 
-        pingprobes=30
-        lastheaderprinthour='X'
+        pingprobes = 30
+        lastheaderprinthour = 'X'
         pingn = 0
         packet_loss = 0
         min_time = 1000000.0
