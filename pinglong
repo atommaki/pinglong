@@ -34,7 +34,7 @@ def one_packet_ping(sleep, IP, IP_family, pingresults):
 def print_header(pingprobes):
     print('Time         x=lost   .=OK  '+' '.ljust(pingprobes-20)+'      loss(%)        min [ms]        avg [ms]        max [ms]')
 
-def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time):
+def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, all_downtime):
     def print_stat(pingprobes, printed, pingok, packet_loss):
         if printed > 0:
             space_needed=pingprobes-printed
@@ -62,7 +62,7 @@ def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time):
             x=Process(target=one_packet_ping, args=(i*(60-sec)/(pingprobes+1), IP, IP_family, pingresults,))
             x.start()
         while printed < pingprobes:
-            if pingresults.qsize()>0:
+            while pingresults.qsize()>0:
                 pingresult=pingresults.get()
                 if pingresult[0]==0:
                     pingok=pingok+1
@@ -73,6 +73,7 @@ def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time):
                     l_all_time=l_all_time+pingtime
                 else:
                     packet_loss=packet_loss+1
+                    all_downtime=all_downtime+((60-sec)/pingprobes)
                     sys.stdout.write('x')
                 printed=printed+1
                 sys.stdout.flush()
@@ -81,7 +82,7 @@ def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time):
     except KeyboardInterrupt:
         exit_ok = False
     print_stat(pingprobes, printed, pingok, packet_loss)
-    return (printed, packet_loss, min(min_time, l_min_time), max(max_time, l_max_time), all_time+l_all_time, exit_ok)
+    return (printed, packet_loss, min(min_time, l_min_time), max(max_time, l_max_time), all_time+l_all_time, all_downtime, exit_ok)
 
 def main():
     ### Arguments
@@ -124,13 +125,14 @@ def main():
         min_time = 1000000.0
         max_time = 0.0
         all_time = 0
+        all_downtime = 0
         while True:
             current=time.strftime('%H%M')
             if current[:2] != lastheaderprinthour:
                 print_header(pingprobes)
                 lastheaderprinthour=current[:2]
             previous=current
-            pingn, packet_loss, min_time, max_time, all_time, exit_ok = tuple(map(operator.add, (pingn, packet_loss, 0, 0, 0, False), one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time)))
+            pingn, packet_loss, min_time, max_time, all_time, all_downtime, exit_ok = tuple(map(operator.add, (pingn, packet_loss, 0, 0, 0, 0, False), one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, all_downtime)))
             if not exit_ok:
                 raise KeyboardInterrupt
             while current == previous:
@@ -140,7 +142,10 @@ def main():
         print('')
         if pingn > 0:
             print('Total: {} packets transmitted, {} received, {}% packet loss'.format(pingn, int(pingn-packet_loss), round(100*packet_loss/pingn)))
-            print('       rtt min/avg/max = {}/{}/{} ms'.format(min_time,str(all_time/(pingn-packet_loss))[:6],max_time,max_time))
+            if pingn-packet_loss > 0:
+                print('       RTT: min/avg/max = {}/{}/{} ms'.format(min_time,str(all_time/(pingn-packet_loss))[:6],max_time,max_time))
+            if all_downtime > 0:
+                print('       Downtime: sum =~ {} sec'.format(round(all_downtime,1)))
         sys.exit(0)
 
 
