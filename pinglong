@@ -5,6 +5,7 @@ import subprocess
 import time
 import socket
 import argparse
+import operator
 from multiprocessing import Process, Queue
 
 def one_packet_ping(sleep, IP, IP_family, pingresults):
@@ -34,6 +35,17 @@ def print_header(pingprobes):
     print('Time         x=lost   .=OK  '+' '.ljust(pingprobes-20)+'      loss(%)        min [ms]        avg [ms]        max [ms]')
 
 def one_minute_pings(pingprobes, IP, IP_family):
+    def print_stat(pingprobes, printed, pingok, packet_loss):
+        if printed > 0:
+            space_needed=pingprobes-printed
+            print('  '.ljust(space_needed), end='')
+            packet_loss=round((100*packet_loss)/printed, 1)
+            print(str(packet_loss).rjust(3)+'%', end='')
+            if packet_loss != 100:
+                print(' '.ljust(6)+str(min_time)[:6].ljust(6)+' '.ljust(6)+str(all_time/pingok)[:6].ljust(6)+' '.ljust(6)+str(max_time)[:6].ljust(6))
+            else:
+                print('')
+
     try:
         printed=0
         pingok=0
@@ -64,17 +76,12 @@ def one_minute_pings(pingprobes, IP, IP_family):
                     sys.stdout.write('x')
                 printed=printed+1
                 sys.stdout.flush()
-            time.sleep(1)
-    finally:
-        if printed > 0:
-            space_needed=pingprobes-printed
-            print('  '.ljust(space_needed), end='')
-            packet_loss=round((100*packet_loss)/printed, 1)
-            print(str(packet_loss).rjust(3)+'%', end='')
-            if packet_loss != 100:
-                print(' '.ljust(6)+str(min_time)[:6].ljust(6)+' '.ljust(6)+str(all_time/pingok)[:6].ljust(6)+' '.ljust(6)+str(max_time)[:6].ljust(6))
-            else:
-                print('')
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print_stat(pingprobes, printed, pingok, packet_loss)
+        return (printed, packet_loss, False)
+    print_stat(pingprobes, printed, pingok, packet_loss)
+    return (printed, packet_loss, True)
 
 def main():
     ### Arguments
@@ -112,18 +119,23 @@ def main():
 
         pingprobes=30
         lastheaderprinthour='X'
+        pingn, packet_loss = (0, 0)
         while True:
             current=time.strftime('%H%M')
             if current[:2] != lastheaderprinthour:
                 print_header(pingprobes)
                 lastheaderprinthour=current[:2]
             previous=current
-            one_minute_pings(pingprobes, IP, IP_family)
+            pingn, packet_loss, exit_ok = tuple(map(operator.add, (pingn, packet_loss, False), one_minute_pings(pingprobes, IP, IP_family)))
+            if not exit_ok:
+                raise KeyboardInterrupt
             while current == previous:
                 current=time.strftime('%H%M')
                 time.sleep(1)
     except KeyboardInterrupt:
         print('')
+        if pingn > 0:
+            print('Total: {} packets transmitted, {} received, {}% packet loss'.format(pingn, int(pingn-packet_loss), round(100*packet_loss/pingn)))
         sys.exit(0)
 
 
