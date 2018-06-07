@@ -11,6 +11,7 @@ It's currenly tested only on Linux.
 ```
 $ pinglong testhost.example.com
 PING testhost.example.com (11.22.33.44)
+Time         x=lost   .=OK            loss(%)    min [ms]    avg [ms]    max [ms]
 17:31: ..............................   0.0%      28.896      28.952      29.138
 17:32: .............................x   3.3%      28.905      28.934      29.018
 17:33: .............x...............x   6.7%      28.888      28.925      29.014
