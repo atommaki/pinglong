@@ -32,7 +32,7 @@ def one_packet_ping(sleep, IP, IP_family, pingresults):
         return
 
 def print_header(pingprobes):
-    print('Time         x=lost   .=OK  '+' '.ljust(pingprobes-20)+'loss(%)   min [ms]    avg [ms]    max [ms]')
+    print('Time         x=lost   .=OK  '+' '.ljust(pingprobes-20)+'loss(%)    min [ms]    avg [ms]    max [ms]')
 
 def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, all_downtime):
     def print_stat(pingprobes, printed, pingok, packet_loss):
@@ -40,7 +40,7 @@ def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, al
             space_needed=pingprobes-printed
             print('  '.ljust(space_needed), end='')
             packet_loss=round((100*packet_loss)/printed, 1)
-            print(str(packet_loss).rjust(3)+'%', end='')
+            print(str(packet_loss).rjust(4)+'%', end='')
             if packet_loss != 100:
                 print(' '.ljust(6)+str(l_min_time)[:6].ljust(6)+' '.ljust(6)+str(l_all_time/pingok)[:6].ljust(6)+' '.ljust(6)+str(l_max_time)[:6].ljust(6))
             else:
@@ -102,7 +102,10 @@ def main():
         address_family = socket.AF_INET
     if vars(args)['6']:
         address_family = socket.AF_INET6
-    pingprobes = args.ppm
+    if args.ppm >= ppm_min and args.ppm <= ppm_max:
+        pingprobes = args.ppm
+    else:
+        raise ValueError('wrong ppm value (min={}, max={})'.format(ppm_min, ppm_max))
     ### /Arguments
 
     try:
