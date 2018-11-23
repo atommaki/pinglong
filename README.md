@@ -6,6 +6,9 @@ It's written in python3 and uses the standard ping or ping6 command, but gives y
 
 It's currenly tested only on Linux.
 
+## how to install
+Just copy pinglong somewhere on your PATH (eg: /usr/local/bin). It requires python3, what is most likely already installed on your system.
+
 ## example outpout
 
 ```
