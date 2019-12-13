@@ -125,7 +125,7 @@ def main():
             hostinfo=args.host
         else:
             hostinfo=f"{ args.host } ({ IP })"
-        print(f"PING {hostinfo}")
+        print(f"PING { hostinfo }   { pingprobes } packet per minute")
 
         lastheaderprinthour = 'X'
         pingn = 0
@@ -149,7 +149,7 @@ def main():
     except KeyboardInterrupt:
         print('')
         if pingn > 0:
-            print(f"{ hostinfo} ")
+            print(f"PING { hostinfo } finished.")
             print(f"Total: { pingn } packets transmitted, { int(pingn-packet_loss) } received, { round(100*packet_loss/pingn) }% packet loss")
             if pingn-packet_loss > 0:
                 print(f"       RTT: min/avg/max = { min_time }/{ str(all_time/(pingn-packet_loss))[:6] }/{ max_time } ms")
