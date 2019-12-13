@@ -32,7 +32,7 @@ def one_packet_ping(sleep, IP, IP_family, pingresults):
         return
 
 def print_header(pingprobes):
-    print('Time         x=lost   .=OK  '+' '.ljust(pingprobes-20)+'loss(%)    min [ms]    avg [ms]    max [ms]')
+    print(f"Time         x=lost   .=OK  { ' '.ljust(pingprobes-20) }loss(%)    min [ms]    avg [ms]    max [ms]")
 
 def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, all_downtime):
     def print_stat(pingprobes, printed, pingok, packet_loss):
@@ -40,9 +40,9 @@ def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, al
             space_needed=pingprobes-printed
             print('  '.ljust(space_needed), end='')
             packet_loss=round((100*packet_loss)/printed, 1)
-            print(str(packet_loss).rjust(4)+'%', end='')
+            print(f"{ str(packet_loss).rjust(4) }%", end='')
             if packet_loss != 100:
-                print(' '.ljust(6)+str(l_min_time)[:6].ljust(6)+' '.ljust(6)+str(l_all_time/pingok)[:6].ljust(6)+' '.ljust(6)+str(l_max_time)[:6].ljust(6))
+                print(f"{ ' '.ljust(6) }{ str(l_min_time)[:6].ljust(6) }{ ' '.ljust(6) }{ str(l_all_time/pingok)[:6].ljust(6) }{ ' '.ljust(6) }{ str(l_max_time)[:6].ljust(6) }")
             else:
                 print('')
 
@@ -56,7 +56,7 @@ def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, al
         pingresults=Queue()
 
         current=time.strftime('%H%M')
-        print(time.strftime('%H:%M')+': ', end='')
+        print(f"{ time.strftime('%H:%M') }: ", end='')
         sec=int(time.strftime('%S'))
         for i in range(0,pingprobes):
             x=Process(target=one_packet_ping, args=(i*(60-sec)/(pingprobes+1), IP, IP_family, pingresults,))
@@ -91,7 +91,7 @@ def main():
     ppm_min = 10
     ppm_max = 30
     ppm_default = 30
-    parser.add_argument('--ppm', help='pings per minute (default={}, min={}, max={})'.format(ppm_default, ppm_min, ppm_max), default=ppm_default, type=int)
+    parser.add_argument('--ppm', help=f"packet per minute (default={ ppm_default }, min={ ppm_min }, max={ ppm_max })", default=ppm_default, type=int)
     ipv4_or_ipv6 = parser.add_mutually_exclusive_group()
     ipv4_or_ipv6.add_argument('-4', help='force IPv4', action='store_true')
     ipv4_or_ipv6.add_argument('-6', help='force IPv6', action='store_true')
@@ -105,7 +105,7 @@ def main():
     if args.ppm >= ppm_min and args.ppm <= ppm_max:
         pingprobes = args.ppm
     else:
-        raise ValueError('wrong ppm value (min={}, max={})'.format(ppm_min, ppm_max))
+        raise ValueError(f"wrong ppm value (min={ ppm_min }, max={ ppm_max })")
     ### /Arguments
 
     try:
@@ -150,11 +150,11 @@ def main():
         print('')
         if pingn > 0:
             print(f"{ hostinfo} ")
-            print('Total: {} packets transmitted, {} received, {}% packet loss'.format(pingn, int(pingn-packet_loss), round(100*packet_loss/pingn)))
+            print(f"Total: { pingn } packets transmitted, { int(pingn-packet_loss) } received, { round(100*packet_loss/pingn) }% packet loss")
             if pingn-packet_loss > 0:
-                print('       RTT: min/avg/max = {}/{}/{} ms'.format(min_time,str(all_time/(pingn-packet_loss))[:6],max_time,max_time))
+                print(f"       RTT: min/avg/max = { min_time }/{ str(all_time/(pingn-packet_loss))[:6] }/{ max_time } ms")
             if all_downtime > 0:
-                print('       Downtime: sum =~ {} sec'.format(round(all_downtime,1)))
+                print(f"       Downtime: sum =~ { round(all_downtime,1)  } sec")
         sys.exit(0)
 
 
