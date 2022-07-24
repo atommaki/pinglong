@@ -9,7 +9,7 @@ import operator
 import datetime
 from multiprocessing import Process, Queue
 
-def one_packet_ping(sleep, IP, IP_family, pingresults):
+def one_packet_ping(sleep, IP, IP_family, pingresults, pingoptions):
     if IP_family == socket.AF_INET6:
         pingcmd='ping6' # IPv6
     else:
@@ -17,7 +17,7 @@ def one_packet_ping(sleep, IP, IP_family, pingresults):
     try:
         import time
         time.sleep(sleep)
-        Ping=subprocess.Popen([ pingcmd, "-c", "1", "-n", IP ],
+        Ping=subprocess.Popen([ pingcmd, "-c", "1", "-n", IP ] + pingoptions,
                               stdout = subprocess.PIPE,
                               stderr = subprocess.PIPE)
         pingstdout, pingstderr = Ping.communicate()
@@ -35,7 +35,7 @@ def one_packet_ping(sleep, IP, IP_family, pingresults):
 def print_header(pingprobes):
     print(f"Time         x=lost   .=OK  { ' '.ljust(pingprobes-20) }loss(%)    min [ms]    avg [ms]    max [ms]")
 
-def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, all_downtime, first):
+def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, all_downtime, pingoptions, first):
     def print_stat(pingprobes, printed, pingok, packet_loss):
         if printed > 0:
             space_needed=pingprobes-printed
@@ -66,12 +66,12 @@ def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, al
             pingprobes = pingprobes - skippedpings
             sys.stdout.write(' '.ljust(skippedpings))
         for i in range(0,pingprobes):
-            x=Process(target=one_packet_ping, args=(i*(60-realstartsec)/(pingprobes+1), IP, IP_family, pingresults,))
+            x=Process(target=one_packet_ping, args=(i*(60-realstartsec)/(pingprobes+1), IP, IP_family, pingresults, pingoptions))
             x.start()
         while printed < pingprobes:
             while pingresults.qsize()>0:
                 pingresult=pingresults.get()
-                if pingresult[0]==0:
+                if pingresult[0] == 0:
                     pingok=pingok+1
                     pingtime=pingresult[1]
                     sys.stdout.write('.')
@@ -105,6 +105,8 @@ def human_readable_time(s):
 
 
 def main():
+    pingoptions = []
+
     ### Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('host', action='store')
@@ -112,6 +114,7 @@ def main():
     ppm_max = 30
     ppm_default = 30
     parser.add_argument('--ppm', help=f"packet per minute (default={ ppm_default }, min={ ppm_min }, max={ ppm_max })", default=ppm_default, type=int)
+    parser.add_argument('-I', help='interface (original option of ping)', dest='interface')
     ipv4_or_ipv6 = parser.add_mutually_exclusive_group()
     ipv4_or_ipv6.add_argument('-4', help='force IPv4', action='store_true')
     ipv4_or_ipv6.add_argument('-6', help='force IPv6', action='store_true')
@@ -126,6 +129,8 @@ def main():
         pingprobes = args.ppm
     else:
         raise ValueError(f"wrong ppm value (min={ ppm_min }, max={ ppm_max })")
+    if args.interface:
+        pingoptions=pingoptions+[ '-I', args.interface ]
     ### /Arguments
 
     try:
@@ -142,9 +147,9 @@ def main():
         IP=addrinfo[4][0]
 
         if args.host == IP:
-            hostinfo=args.host
+            hostinfo = args.host
         else:
-            hostinfo=f"{ args.host } ({ IP })"
+            hostinfo = f"{ args.host } ({ IP })"
         print(f"PING { hostinfo }   { pingprobes } packet per minute")
 
         lastheaderprinthour = 'X'
@@ -164,7 +169,7 @@ def main():
             previous=current
             pingn, packet_loss, min_time, max_time, all_time, all_downtime, exit_ok = tuple(map(operator.add,
                     (pingn, packet_loss, 0, 0, 0, 0, False),
-                    one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, all_downtime, first)
+                    one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, all_downtime, pingoptions, first)
                 ))
             first = False
             if not exit_ok:
