@@ -6,8 +6,32 @@ import time
 import socket
 import argparse
 import operator
-import datetime
 from multiprocessing import Process, Queue
+
+def first_ping_test(IP, IP_family, pingoptions):
+    # Used only once at start mainly to check if the ping options work fine
+    # This is the only 'ping' call where the error message from 'ping' is printed out.
+    if IP_family == socket.AF_INET6:
+        pingcmd='ping6' # IPv6
+    else:
+        pingcmd='ping'  # IPv4
+    Ping=subprocess.Popen([ pingcmd, "-c", "1", "-n", IP ] + pingoptions,
+                              stdout = subprocess.PIPE,
+                              stderr = subprocess.PIPE)
+    pingstdout, pingstderr = Ping.communicate()
+    Ping.wait()
+    # man ping:
+    # If ping does not receive any reply packets at all it will exit with code
+    # 1. If a packet count and deadline are both specified, and  fewer  than
+    # count packets are received by the time the deadline has arrived, it will
+    # also exit with code 1.  On other error it exits with code 2. Otherwise it
+    # exits with code 0. This makes it possible to use the exit code to see if
+    # a host is alive or not.
+    if Ping.returncode == 2:
+        print(pingstdout.decode("utf-8"))
+        print(pingstderr.decode("utf-8"), file=sys.stderr)
+        return False
+    return True
 
 def one_packet_ping(sleep, IP, IP_family, pingresults, pingoptions):
     if IP_family == socket.AF_INET6:
@@ -81,7 +105,10 @@ def one_minute_pings(pingprobes, IP, IP_family, min_time, max_time, all_time, al
                 else:
                     packet_loss=packet_loss+1
                     all_downtime=all_downtime+((60-startsec)/pingprobes)
-                    sys.stdout.write('x')
+                    if pingresult[0] == 1:
+                        sys.stdout.write('x')
+                    else: # pingresult[0] == 2
+                        sys.stdout.write('?')
                 printed=printed+1
                 sys.stdout.flush()
             time.sleep(0.1)
@@ -115,6 +142,10 @@ def main():
     ppm_default = 30
     parser.add_argument('--ppm', help=f"packet per minute (default={ ppm_default }, min={ ppm_min }, max={ ppm_max })", default=ppm_default, type=int)
     parser.add_argument('-I', help='interface (original option of ping)', dest='interface')
+    parser.add_argument('-s', help='use <size> as number of data bytes to be sent (original option of ping)', dest='size', type=int)
+    parser.add_argument('-t', help='define time to live (original option of ping)', dest='ttl', type=int)
+    parser.add_argument('-Q', help='use quality of service <tclass> bits (original option of ping)', dest='q', type=str)
+    parser.add_argument('-b', help='allow pinging broadcast (original option of ping)', dest='broadcast', action='store_true')
     ipv4_or_ipv6 = parser.add_mutually_exclusive_group()
     ipv4_or_ipv6.add_argument('-4', help='force IPv4', action='store_true')
     ipv4_or_ipv6.add_argument('-6', help='force IPv6', action='store_true')
@@ -130,18 +161,27 @@ def main():
     else:
         raise ValueError(f"wrong ppm value (min={ ppm_min }, max={ ppm_max })")
     if args.interface:
-        pingoptions=pingoptions+[ '-I', args.interface ]
+        pingoptions=pingoptions + [ '-I', args.interface ]
+    if args.size:
+        pingoptions=pingoptions + [ '-s', str(args.size) ]
+    if args.ttl:
+        pingoptions=pingoptions + [ '-t', str(args.ttl) ]
+    if args.broadcast:
+        pingoptions=pingoptions + [ '-b' ]
+    if args.q:
+        pingoptions=pingoptions + [ '-Q', args.q ]
     ### /Arguments
 
     try:
-        try:
-            if address_family:
-                addrinfo=socket.getaddrinfo(args.host, 0, family = address_family)[0]
-            else:
-                addrinfo=socket.getaddrinfo(args.host, 0)[0]
-        except socket.gaierror as e:
-            print(e[1])
-            sys.exit(1)
+        if address_family:
+            addrinfo=socket.getaddrinfo(args.host, 0, family = address_family)[0]
+        else:
+            addrinfo=socket.getaddrinfo(args.host, 0)[0]
+    except socket.gaierror as e:
+        print(f'pinglong: {args.host}: {str(e)}', file=sys.stderr)
+        sys.exit(1)
+
+    try:
 
         IP_family=addrinfo[0]
         IP=addrinfo[4][0]
@@ -151,6 +191,8 @@ def main():
         else:
             hostinfo = f"{ args.host } ({ IP })"
         print(f"PING { hostinfo }   { pingprobes } packet per minute")
+        if not first_ping_test(IP, IP_family, pingoptions):
+            sys.exit(1)
 
         lastheaderprinthour = 'X'
         pingn = 0
@@ -190,5 +232,6 @@ def main():
         sys.exit(0)
 
 
-main()
+if __name__ == "__main__":
+    main()
 
